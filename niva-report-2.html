@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIVA Report Builder — Analisis Vaskular</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#0B1F2B;
+    --ink-2:#122E3F;
+    --paper:#F4F8F9;
+    --card:#FFFFFF;
+    --artery:#C81E3A;
+    --artery-soft:#FCE8EB;
+    --vein:#1B4F72;
+    --teal:#0E7C7B;
+    --teal-soft:#E3F3F1;
+    --amber:#B87A00;
+    --amber-soft:#FBF0DC;
+    --slate:#5B7480;
+    --line:#DCE6E8;
+    --ok:#1C7A4D;
+    --ok-soft:#E4F5EC;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.5;
+    padding-bottom:40px;
+  }
+  h1,h2,h3,.disp{font-family:'Space Grotesk', sans-serif;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  /* ---- pulse divider signature ---- */
+  .pulse{ width:100%; height:34px; overflow:hidden; margin:0 0 6px 0; }
+  .pulse svg{width:100%;height:100%;display:block;}
+  .pulse path{
+    fill:none; stroke:var(--artery); stroke-width:2.2;
+    stroke-dasharray:600; stroke-dashoffset:600;
+    animation:draw 2.6s ease-out forwards;
+  }
+  @keyframes draw{to{stroke-dashoffset:0;}}
+
+  /* ---- header ---- */
+  header{
+    background:linear-gradient(135deg,var(--ink) 0%, var(--ink-2) 55%, #0d3a44 100%);
+    color:#EAF3F3;
+    padding:34px 24px 26px;
+    position:relative;
+  }
+  .header-inner{max-width:1180px;margin:0 auto;}
+  .brand-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .brand-mark{
+    width:46px;height:46px;border-radius:12px;
+    background:var(--artery);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 18px rgba(200,30,58,.35);
+    flex-shrink:0;
+  }
+  .brand-mark svg{width:26px;height:26px;}
+  header h1{font-size:1.55rem;margin:0;letter-spacing:.2px;}
+  header .tag{color:#9FC9C7;font-size:.85rem;margin-top:2px;}
+  .header-meta{
+    margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:14px;
+  }
+  .header-meta .chip{
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:10px;padding:10px 12px;
+  }
+  .header-meta .chip .k{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#8FB9B7;}
+  .header-meta .chip .v{font-family:'IBM Plex Mono',monospace;font-size:1rem;margin-top:2px;color:#fff;}
+
+  /* ---- action bar ---- */
+  .actionbar{
+    position:sticky;top:0;z-index:50;
+    background:#fff;border-bottom:1px solid var(--line);
+    box-shadow:0 2px 10px rgba(11,31,43,.05);
+  }
+  .actionbar-inner{
+    max-width:1180px;margin:0 auto;padding:10px 24px;
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;
+  }
+  .actionbar .grp{display:flex;gap:8px;flex-wrap:wrap;}
+  button{
+    font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:.85rem;
+    border-radius:8px;padding:9px 15px;cursor:pointer;border:1px solid transparent;
+    transition:transform .08s ease, box-shadow .12s ease;
+  }
+  button:active{transform:translateY(1px);}
+  .btn-primary{background:var(--artery);color:#fff;}
+  .btn-primary:hover{box-shadow:0 4px 12px rgba(200,30,58,.3);}
+  .btn-ghost{background:#fff;color:var(--ink-2);border-color:var(--line);}
+  .btn-ghost:hover{border-color:var(--teal);color:var(--teal);}
+  .btn-teal{background:var(--teal);color:#fff;}
+  .btn-teal:hover{box-shadow:0 4px 12px rgba(14,124,123,.3);}
+  .status-note{font-size:.78rem;color:var(--slate);}
+
+  main{max-width:1180px;margin:0 auto;padding:26px 24px 10px;}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:22px 24px;margin-bottom:22px;
+  }
+  .card h2{
+    font-size:1.02rem;margin:0 0 4px;display:flex;align-items:center;gap:10px;color:var(--ink-2);
+  }
+  .card h2 .num{
+    font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:#fff;background:var(--vein);
+    border-radius:999px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .card .sub{color:var(--slate);font-size:.82rem;margin:0 0 18px;}
+
+  .grid{display:grid;gap:16px;}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-3{grid-template-columns:repeat(3,1fr);}
+  .grid-2{grid-template-columns:repeat(2,1fr);}
+  @media(max-width:820px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:repeat(2,1fr);} .grid-2{grid-template-columns:1fr;}}
+  @media(max-width:520px){.grid-4{grid-template-columns:1fr;}}
+
+  label{display:block;font-size:.74rem;font-weight:600;color:var(--slate);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;}
+  input[type=text],input[type=number],input[type=date],input[type=time],input[type=datetime-local],select,textarea{
+    width:100%;padding:9px 10px;border:1.4px solid var(--line);border-radius:8px;
+    font-family:'IBM Plex Mono',monospace;font-size:.92rem;color:var(--ink);
+    background:#fbfdfd;
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);background:#fff;}
+  .field{margin-bottom:2px;}
+  textarea{font-family:'IBM Plex Sans',sans-serif;min-height:70px;resize:vertical;}
+
+  .computed{
+    background:var(--teal-soft);border:1px dashed var(--teal);border-radius:8px;
+    padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:.92rem;color:var(--ink-2);
+  }
+
+  table.riwayat{width:100%;border-collapse:collapse;font-size:.9rem;}
+  table.riwayat th,table.riwayat td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;}
+  table.riwayat th{color:var(--slate);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;}
+  table.riwayat td.check{text-align:center;}
+  input[type=checkbox]{width:18px;height:18px;accent-color:var(--teal);cursor:pointer;}
+
+  .limb{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fbfdfd;position:relative;}
+  .limb h3{margin:0 0 10px;font-size:.85rem;color:var(--vein);display:flex;align-items:center;gap:6px;}
+  .limb h3 .dot{width:8px;height:8px;border-radius:50%;background:var(--artery);}
+  .limb .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+
+  canvas{max-width:100%;}
+  .chart-wrap{margin-top:16px;background:#fbfdfd;border:1px solid var(--line);border-radius:12px;padding:16px;}
+
+  .rangebar{position:relative;height:34px;border-radius:8px;margin-top:10px;overflow:visible;
+    background:linear-gradient(to right, var(--artery-soft) 0 20%, var(--amber-soft) 20% 33%, var(--ok-soft) 33% 78%, var(--artery-soft) 78% 100%);
+  }
+  .rangebar .ticklabels{display:flex;justify-content:space-between;font-size:.66rem;color:var(--slate);margin-top:4px;}
+  .rangebar .marker{ position:absolute;top:-8px;width:2px;height:50px;background:var(--ink);transform:translateX(-1px); }
+  .rangebar .marker::after{
+    content:attr(data-label);position:absolute;top:-22px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:.68rem;
+    padding:2px 6px;border-radius:5px;white-space:nowrap;
+  }
+
+  .ruler{position:relative;height:70px;margin-top:14px;}
+  .ruler .track{position:absolute;top:32px;left:0;right:0;height:8px;border-radius:6px;
+    background:linear-gradient(to right, var(--ok) 0%, var(--ok) 45%, var(--amber) 65%, var(--artery) 100%);}
+  .ruler .scale{display:flex;justify-content:space-between;position:absolute;top:44px;left:0;right:0;font-size:.7rem;color:var(--slate);font-family:'IBM Plex Mono',monospace;}
+  .ruler .pin{position:absolute;top:0;text-align:center;transform:translateX(-50%);}
+  .ruler .pin .flag{font-family:'IBM Plex Mono',monospace;font-size:.68rem;font-weight:600;color:#fff;padding:3px 7px;border-radius:5px;white-space:nowrap;}
+  .ruler .pin .stem{width:2px;height:14px;margin:2px auto 0;background:var(--ink);}
+  .ruler .pin.actual .flag{background:var(--vein);}
+  .ruler .pin.vasc .flag{background:var(--artery);}
+
+  .interp-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media(max-width:820px){.interp-grid{grid-template-columns:1fr;}}
+  .interp-block{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fbfdfd;}
+  .interp-block h4{margin:0 0 10px;font-size:.82rem;color:var(--vein);}
+  .opt{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:.88rem;cursor:pointer;}
+  .opt input{accent-color:var(--artery);width:16px;height:16px;}
+  .suggest{display:inline-block;margin-top:8px;font-size:.72rem;background:var(--teal-soft);color:var(--teal);padding:3px 9px;border-radius:999px;font-weight:600;}
+
+  table.params{width:100%;border-collapse:collapse;font-size:.88rem;}
+  table.params th{text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);padding:8px;border-bottom:2px solid var(--line);}
+  table.params td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.params td.pname{width:34%;}
+  table.params td.pname b{display:block;color:var(--ink-2);}
+  table.params td.pname span{font-size:.76rem;color:var(--slate);}
+  table.params input{width:100px;}
+  .flagpill{display:inline-block;margin-top:6px;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;}
+  .flag-ok{background:var(--ok-soft);color:var(--ok);}
+  .flag-bad{background:var(--artery-soft);color:var(--artery);}
+  .flag-none{background:#eef1f2;color:var(--slate);}
+
+  .legend-list{display:flex;gap:18px;font-size:.82rem;flex-wrap:wrap;margin-top:10px;}
+  .legend-list .li{display:flex;align-items:center;gap:6px;}
+  .legend-list .sw{width:12px;height:3px;border-radius:2px;}
+
+  .rekom-list .opt{border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:8px;background:#fbfdfd;}
+
+  footer{max-width:1180px;margin:10px auto 40px;padding:0 24px;color:var(--slate);font-size:.72rem;}
+  footer .fcard{border-top:1px solid var(--line);padding-top:14px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  footer input{font-size:.72rem;padding:5px 7px;}
+
+  /* bottom CTA */
+  .cta-band{
+    max-width:1180px;margin:0 auto 30px;padding:0 24px;
+  }
+  .cta-inner{
+    background:linear-gradient(135deg,var(--ink) 0%, var(--ink-2) 60%, #0d3a44 100%);
+    border-radius:16px;padding:26px 28px;color:#EAF3F3;
+    display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  }
+  .cta-inner h3{margin:0 0 4px;font-size:1.1rem;color:#fff;}
+  .cta-inner p{margin:0;font-size:.85rem;color:#9FC9C7;}
+  .cta-inner .btn-primary{font-size:.95rem;padding:13px 22px;}
+
+  /* =============== REPORT (HASIL) VIEW =============== */
+  #reportView{display:none;}
+  body.report-mode .app-shell{display:none;}
+  body.report-mode #reportView{display:block;}
+
+  .report-toolbar{
+    position:sticky;top:0;z-index:60;background:#fff;border-bottom:1px solid var(--line);
+    padding:10px 24px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  .report-toolbar .title{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--ink-2);}
+
+  .report-canvas{max-width:900px;margin:22px auto;background:#fff;}
+  .rpage{
+    background:#fff;border:1px solid var(--line);box-shadow:0 4px 22px rgba(11,31,43,.08);
+    padding:12mm 10mm;margin-bottom:26px;
+    width:210mm;min-height:297mm;margin-left:auto;margin-right:auto;
+  }
+  .rpage + .rpage{margin-top:0;}
+  .rhead{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.4px solid var(--ink);padding-bottom:8px;margin-bottom:12px;}
+  .rhead .brand{display:flex;align-items:center;gap:10px;}
+  .rhead .brand .mark{width:30px;height:30px;border-radius:8px;background:var(--artery);display:flex;align-items:center;justify-content:center;}
+  .rhead .brand .mark svg{width:17px;height:17px;}
+  .rhead .brand .t1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.05rem;line-height:1.1;color:var(--ink);}
+  .rhead .brand .t2{font-size:.66rem;color:var(--slate);}
+  .rhead .meta{text-align:right;font-size:.68rem;color:var(--slate);}
+  .rhead .meta b{color:var(--ink-2);}
+
+  .rsection{margin-bottom:14px;}
+  .rsection-title{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.78rem;text-transform:uppercase;
+    letter-spacing:.06em;color:#fff;background:var(--vein);display:inline-block;padding:3px 10px;border-radius:5px;
+    margin-bottom:8px;
+  }
+  .rgrid{display:grid;gap:10px;}
+  .rgrid-2{grid-template-columns:1fr 1fr;}
+  .rgrid-4{grid-template-columns:repeat(4,1fr);}
+  .rbox{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fbfdfd;}
+  .rbox .rk{font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);}
+  .rbox .rv{font-family:'IBM Plex Mono',monospace;font-size:.86rem;font-weight:600;color:var(--ink);margin-top:1px;}
+
+  table.rtable{width:100%;border-collapse:collapse;font-size:.72rem;}
+  table.rtable th{background:#F1F5F6;color:var(--slate);text-transform:uppercase;letter-spacing:.03em;font-size:.6rem;text-align:left;padding:5px 7px;border-bottom:1.4px solid var(--line);}
+  table.rtable td{padding:5px 7px;border-bottom:1px solid var(--line);}
+  table.rtable td.num{font-family:'IBM Plex Mono',monospace;text-align:center;}
+  table.rtable tr.hl td{background:var(--artery-soft);}
+
+  .rchips{display:flex;gap:8px;flex-wrap:wrap;}
+  .rchip{border:1px solid var(--line);background:#fbfdfd;border-radius:999px;padding:3px 10px;font-size:.68rem;}
+  .rchip b{color:var(--ink-2);}
+
+  .rpill{display:inline-block;font-size:.66rem;font-weight:700;padding:2px 9px;border-radius:999px;}
+  .rpill.ok{background:var(--ok-soft);color:var(--ok);}
+  .rpill.bad{background:var(--artery-soft);color:var(--artery);}
+  .rpill.neu{background:var(--teal-soft);color:var(--teal);}
+
+  .rcat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .rcat{border:1px solid var(--line);border-radius:8px;padding:8px 9px;text-align:center;background:#fbfdfd;}
+  .rcat .rk{font-size:.6rem;color:var(--slate);text-transform:uppercase;letter-spacing:.04em;}
+  .rcat .rv{font-weight:700;font-size:.78rem;margin-top:3px;color:var(--ink-2);}
+
+  .rnote-box{border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:.76rem;min-height:34px;background:#fbfdfd;}
+  .rrecom li{font-size:.76rem;margin-bottom:4px;}
+
+  .rfoot{margin-top:14px;padding-top:8px;border-top:1px solid var(--line);font-size:.6rem;color:var(--slate);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .rsign{margin-top:22px;display:flex;justify-content:flex-end;}
+  .rsign .box{text-align:center;font-size:.72rem;color:var(--slate);}
+  .rsign .box .line{width:150px;border-bottom:1px solid var(--ink);height:46px;margin-bottom:4px;}
+
+  .rchart-wrap{border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff;}
+
+  /* ---------------- PRINT ---------------- */
+  @page{ size:A4; margin:5mm; }
+  @media print{
+    html,body{background:#fff !important;}
+    .no-print{display:none !important;}
+    body.report-mode .app-shell{display:none !important;}
+    .report-toolbar{display:none !important;}
+    .report-canvas{margin:0;max-width:none;}
+    .rpage{
+      width:auto;min-height:0;box-shadow:none;border:none;margin:0;padding:0;
+      page-break-after:always;
+    }
+    .rpage:last-child{page-break-after:auto;}
+    .rsection{break-inside:avoid;}
+    table.rtable{break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+<header>
+  <div class="header-inner">
+    <div class="brand-row">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2-7 4 14 3-10 2 5h5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>NIVA Report Builder</h1>
+        <div class="tag">Input &amp; Visualisasi Hasil Pemeriksaan Non Invasive Vascular Analyzer</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div class="chip"><div class="k">Nama Pasien</div><div class="v" id="hdrNama">—</div></div>
+      <div class="chip"><div class="k">Usia / JK</div><div class="v" id="hdrUsia">—</div></div>
+      <div class="chip"><div class="k">Tanggal Periksa</div><div class="v" id="hdrTgl">—</div></div>
+      <div class="chip"><div class="k">IMT</div><div class="v" id="hdrImt">—</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="actionbar no-print">
+  <div class="actionbar-inner">
+    <div class="grp">
+      <button class="btn-teal" onclick="fillSample()">⚡ Isi Data Contoh</button>
+      <button class="btn-ghost" onclick="resetForm()">↺ Reset Form</button>
+    </div>
+    <div class="grp">
+      <span class="status-note" id="statusNote"></span>
+      <button class="btn-ghost" onclick="exportJSON()">⇩ Simpan JSON</button>
+      <label class="btn-ghost" style="display:inline-block;margin:0;">
+        ⇧ Muat JSON<input type="file" id="jsonLoader" accept=".json" style="display:none" onchange="loadJSON(event)">
+      </label>
+      <button class="btn-primary" onclick="showReport()">📄 Lihat Hasil</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- 1. DATA PASIEN -->
+  <div class="card">
+    <h2><span class="num">1</span>Data Pasien</h2>
+    <p class="sub">Isi identitas dan antropometri pasien. Umur dan IMT dihitung otomatis.</p>
+    <div class="grid grid-4">
+      <div class="field"><label>Nama Pasien</label><input type="text" id="p_nama" oninput="recalc()" placeholder="dr. retri"></div>
+      <div class="field"><label>Jenis Kelamin</label>
+        <select id="p_jk" onchange="recalc()"><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select>
+      </div>
+      <div class="field"><label>Tanggal Lahir</label><input type="date" id="p_tgllahir" onchange="recalc()"></div>
+      <div class="field"><label>Tangan Dominan</label>
+        <select id="p_tangan"><option>Kanan</option><option>Kiri</option></select>
+      </div>
+    </div>
+    <div class="grid grid-4" style="margin-top:14px;">
+      <div class="field"><label>Tanggal &amp; Jam Periksa</label><input type="datetime-local" id="p_tglperiksa" onchange="recalc()"></div>
+      <div class="field"><label>Tinggi Badan (cm)</label><input type="number" id="p_tb" oninput="recalc()" placeholder="165"></div>
+      <div class="field"><label>Berat Badan (kg)</label><input type="number" id="p_bb" oninput="recalc()" placeholder="67"></div>
+      <div class="field"><label>Umur / IMT (otomatis)</label><div class="computed" id="p_computed">— th — bln · IMT —</div></div>
+    </div>
+  </div>
+
+  <!-- 2. RIWAYAT PASIEN -->
+  <div class="card">
+    <h2><span class="num">2</span>Riwayat Pasien</h2>
+    <p class="sub">Centang riwayat kesehatan pasien dan keluarga inti.</p>
+    <table class="riwayat">
+      <tr><th>Riwayat</th><th class="check">Pasien</th><th class="check">Ayah</th><th class="check">Ibu</th></tr>
+      <tbody id="riwayatBody"></tbody>
+    </table>
+  </div>
+
+  <!-- 3. TEKANAN DARAH -->
+  <div class="card">
+    <div class="pulse"><svg viewBox="0 0 400 34" preserveAspectRatio="none"><path d="M0,17 L110,17 L124,4 L136,30 L150,17 L400,17"/></svg></div>
+    <h2><span class="num">3</span>Parameter Utama — Tekanan Darah</h2>
+    <p class="sub">[P01] Sistolik &amp; [P02] Diastolik pada lengan dan kaki kanan/kiri. MAP dan PP disarankan otomatis, dapat diubah manual.</p>
+    <div class="grid grid-4" id="limbGrid"></div>
+    <div class="chart-wrap">
+      <canvas id="bpChart" height="110"></canvas>
+      <div class="legend-list">
+        <div class="li"><span class="sw" style="background:#C81E3A;"></span>SYS (mmHg)</div>
+        <div class="li"><span class="sw" style="background:#1B4F72;"></span>DIA (mmHg)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. ABI / abPWV / VASCULAR AGE -->
+  <div class="card">
+    <h2><span class="num">4</span>ABI, abPWV &amp; Usia Vaskular</h2>
+    <p class="sub">[P03] Ankle Brachial Index · [P04] ankle-brachial Pulse Wave Velocity · [P05] Estimasi Usia Pembuluh Darah</p>
+    <div class="grid grid-2">
+      <div>
+        <label>ABI Kanan</label><input type="number" step="0.01" id="p_abiR" oninput="recalc()" placeholder="1.17">
+        <div class="rangebar" id="abiRbar"></div>
+        <div class="ticklabels"><span>0.80</span><span>0.90</span><span>1.00</span><span>1.40</span><span>1.60</span></div>
+      </div>
+      <div>
+        <label>ABI Kiri</label><input type="number" step="0.01" id="p_abiL" oninput="recalc()" placeholder="1.15">
+        <div class="rangebar" id="abiLbar"></div>
+        <div class="ticklabels"><span>0.80</span><span>0.90</span><span>1.00</span><span>1.40</span><span>1.60</span></div>
+      </div>
+    </div>
+    <div class="grid grid-2" style="margin-top:18px;">
+      <div class="field"><label>abPWV Kanan (m/sec)</label><input type="number" step="0.1" id="p_pwvR" oninput="recalc()" placeholder="10.6"></div>
+      <div class="field"><label>abPWV Kiri (m/sec)</label><input type="number" step="0.1" id="p_pwvL" oninput="recalc()" placeholder="10.7"></div>
+    </div>
+    <div class="grid grid-2" style="margin-top:6px;">
+      <div class="field"><label>Estimasi Usia Pembuluh Darah (tahun)</label><input type="number" id="p_va" oninput="recalc()" placeholder="30"></div>
+      <div class="field"><label>Label Usia Vaskular</label><input type="text" id="p_valabel" placeholder="Early 30"></div>
+    </div>
+    <div class="ruler" id="ageRuler"></div>
+  </div>
+
+  <!-- 5. INTERPRETASI -->
+  <div class="card">
+    <h2><span class="num">5</span>Interpretasi</h2>
+    <p class="sub">Pilih hasil interpretasi klinis. Saran otomatis (chip biru muda) mengikuti nilai yang diinput — tetap konfirmasi manual sesuai penilaian klinis.</p>
+    <div class="interp-grid">
+      <div class="interp-block">
+        <h4>P01 · Blood Pressure (BP)</h4>
+        <div id="grp_bp"></div>
+        <div class="suggest" id="sug_bp"></div>
+      </div>
+      <div class="interp-block">
+        <h4>P03 · Ankle Brachial Index (ABI)</h4>
+        <div id="grp_abi"></div>
+        <div class="suggest" id="sug_abi"></div>
+      </div>
+      <div class="interp-block">
+        <h4>P04 · Pulse Wave Velocity (PWV)</h4>
+        <div id="grp_pwv"></div>
+        <div class="suggest" id="sug_pwv"></div>
+      </div>
+      <div class="interp-block">
+        <h4>P05 · Vascular Age (VA)</h4>
+        <div id="grp_va"></div>
+        <div class="suggest" id="sug_va"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. PARAMETER JANTUNG & PEMBULUH DARAH -->
+  <div class="card">
+    <h2><span class="num">6</span>Parameter Pengukuran Jantung &amp; Pembuluh Darah</h2>
+    <p class="sub">[P06]–[P15]. Status normal/di luar rujukan ditandai otomatis berdasar nilai rujukan cetak biru NIVA.</p>
+    <table class="params">
+      <thead><tr><th>Parameter</th><th>Hasil</th><th>Nilai Rujukan</th><th>Status</th></tr></thead>
+      <tbody id="paramsBody"></tbody>
+    </table>
+    <div class="chart-wrap">
+      <canvas id="paramsChart" height="110"></canvas>
+      <div class="legend-list">
+        <div class="li"><span class="sw" style="background:#0E7C7B;"></span>Indeks parameter (% terhadap batas rujukan)</div>
+        <div class="li"><span class="sw" style="background:#9aa9ad;border-top:2px dashed #9aa9ad;height:0;"></span>Garis rujukan 100%</div>
+      </div>
+      <div class="status-note" id="paramsSummary" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- 7. REKOMENDASI & CATATAN -->
+  <div class="card">
+    <h2><span class="num">7</span>Rekomendasi &amp; Catatan</h2>
+    <div class="grid grid-2">
+      <div>
+        <label style="margin-bottom:8px;">Rekomendasi</label>
+        <div class="rekom-list" id="rekomList"></div>
+      </div>
+      <div class="field">
+        <label>Catatan Dokter</label>
+        <textarea id="p_catatan" placeholder="Catatan tambahan..."></textarea>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="cta-band no-print">
+  <div class="cta-inner">
+    <div>
+      <h3>Sudah selesai mengisi data?</h3>
+      <p>Buat laporan hasil pemeriksaan versi cetak — rapi, 2 halaman A4, siap disimpan sebagai PDF.</p>
+    </div>
+    <button class="btn-primary" onclick="showReport()">📄 Lihat Hasil &amp; Unduh PDF</button>
+  </div>
+</div>
+
+<footer>
+  <div class="fcard">
+    <div>Machine ID: <input type="text" id="f_machine" value="010423NV0003 [Ver 3.1]" style="width:170px;display:inline-block;"> ·
+      Nomor Izin Edar AKD NIVA: KEMENKES RI AKD 20501320625 · Kategori Produk: Peralatan Kardiologi</div>
+    <div>Dibuat dengan NIVA Report Builder — dokumen internal, bukan pengganti penilaian medis profesional.</div>
+  </div>
+</footer>
+
+</div><!-- /app-shell -->
+
+<!-- =============== REPORT / HASIL VIEW =============== -->
+<div id="reportView">
+  <div class="report-toolbar no-print">
+    <div class="title">📄 Pratinjau Hasil Pemeriksaan</div>
+    <div class="grp" style="display:flex;gap:8px;">
+      <button class="btn-ghost" onclick="hideReport()">← Kembali Edit</button>
+      <button class="btn-primary" onclick="window.print()">🖨 Cetak / Simpan sebagai PDF</button>
+    </div>
+  </div>
+
+  <div class="report-canvas">
+    <!-- PAGE 1 -->
+    <div class="rpage" id="rpage1"></div>
+    <!-- PAGE 2 -->
+    <div class="rpage" id="rpage2"></div>
+  </div>
+</div>
+
+<script>
+/* ---------------- static definitions ---------------- */
+const riwayatItems = ["Hipertensi","Merokok","Diabetes","High Cholesterol","Jantung Koroner","Stroke","Darah Kental","Pasang ring / bypass","Konsumsi obat terkait hal-hal diatas"];
+const limbs = [
+  {key:"lka", label:"Lengan Kanan"},
+  {key:"lki", label:"Lengan Kiri"},
+  {key:"kka", label:"Kaki Kanan"},
+  {key:"kki", label:"Kaki Kiri"},
+];
+/* kind: gt = lebih besar dari a itu baik, lt = lebih kecil dari a itu baik, range = a..b itu baik */
+const paramDefs = [
+  {id:"p06", name:"[P06] Aorta Compliance", desc:"Kompliansi aorta saat jantung berdenyut", refText:">0.73", kind:"gt", a:0.73},
+  {id:"p07", name:"[P07] Artery Compliance", desc:"Kompliansi arteri saat jantung berdenyut", refText:">0.04", kind:"gt", a:0.04},
+  {id:"p08", name:"[P08] Heart Pulse Width", desc:"Lebar pulsating pembuluh", refText:">0.25", kind:"gt", a:0.25},
+  {id:"p09", name:"[P09] Augmentation Index", desc:"Indeks kekuatan pompa jantung ke kaki", refText:"<0.56", kind:"lt", a:0.56},
+  {id:"p10", name:"[P10] Inflection Point", desc:"Besar penyumbatan darah di kapiler", refText:"<0.44", kind:"lt", a:0.44},
+  {id:"p11", name:"[P11] Stiffness Index", desc:"Kekakuan arteri (cm/sec)", refText:"<730 cm/sec", kind:"lt", a:730},
+  {id:"p12", name:"[P12] Delay Time", desc:"Waktu hantar gelombang nadi (sec)", refText:">0.18 sec", kind:"gt", a:0.18},
+  {id:"p13", name:"[P13] Systolic Amplitude", desc:"Indeks kontraksi jantung (%)", refText:">0.50%", kind:"gt", a:0.50},
+  {id:"p14", name:"[P14] Pulse Interval", desc:"Selisih waktu antar gelombang nadi", refText:"0.6 – 1.0", kind:"range", a:0.6, b:1.0},
+  {id:"p15", name:"[P15] Heartbeat", desc:"Denyut jantung (BPM)", refText:"60 – 100 BPM", kind:"range", a:60, b:100},
+];
+function paramOk(p, v){
+  if(p.kind==='gt') return v > p.a;
+  if(p.kind==='lt') return v < p.a;
+  return v >= p.a && v <= p.b;
+}
+function paramIndex(p, v){
+  if(p.kind==='gt') return (v/p.a)*100;
+  if(p.kind==='lt') return (p.a/v)*100;
+  if(v>=p.a && v<=p.b) return 100;
+  if(v < p.a) return (v/p.a)*100;
+  return (p.b/v)*100;
+}
+const bpOptions = ["Normal","Normal - Tinggi","Hipertensi Derajat 1","Hipertensi Derajat 2","Data Tidak Valid"];
+const abiOptions = ["Normal","Non-compressible","Borderline","Possible Occlusion","Data Tidak Valid"];
+const pwvOptions = ["Normal tanpa resiko","Normal dengan resiko (>14 m/s)","Tidak Normal tanpa resiko","Tidak Normal dengan resiko (>14 m/s)","Data Tidak Valid"];
+const vaOptions = ["Sesuai","Lebih Muda","Lebih Tua","Data Tidak Valid"];
+const rekomDefault = [
+  "Lanjutkan perawatan kesehatan Anda dan periksa ulang setelah 2 (dua) bulan",
+  "Terapkan gaya hidup sehat dan gunakan obat-obatan yang diperlukan",
+  "Konsultasi ke dokter spesialis jantung dan pembuluh darah",
+];
+
+let bpChart, paramsChart, rptBpChart, rptParamsChart;
+
+/* ---------------- build static DOM ---------------- */
+function buildRiwayat(){
+  const tbody = document.getElementById('riwayatBody');
+  tbody.innerHTML = riwayatItems.map((item,i)=>`
+    <tr>
+      <td>${item}</td>
+      <td class="check"><input type="checkbox" id="riw_${i}_pasien"></td>
+      <td class="check"><input type="checkbox" id="riw_${i}_ayah"></td>
+      <td class="check"><input type="checkbox" id="riw_${i}_ibu"></td>
+    </tr>`).join('');
+}
+function buildLimbs(){
+  const wrap = document.getElementById('limbGrid');
+  wrap.innerHTML = limbs.map(l=>`
+    <div class="limb">
+      <h3><span class="dot"></span>${l.label}</h3>
+      <div class="row2">
+        <div class="field"><label>SYS</label><input type="number" id="${l.key}_sys" oninput="recalc()" placeholder="120"></div>
+        <div class="field"><label>DIA</label><input type="number" id="${l.key}_dia" oninput="recalc()" placeholder="80"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>MAP</label><input type="number" id="${l.key}_map" placeholder="—"></div>
+        <div class="field"><label>PP</label><input type="number" id="${l.key}_pp" placeholder="—"></div>
+      </div>
+    </div>`).join('');
+}
+function buildInterp(){
+  const mk = (name, opts) => opts.map(o=>`<label class="opt"><input type="radio" name="${name}" value="${o}">${o}</label>`).join('');
+  document.getElementById('grp_bp').innerHTML = mk('int_bp', bpOptions);
+  document.getElementById('grp_abi').innerHTML = mk('int_abi', abiOptions);
+  document.getElementById('grp_pwv').innerHTML = mk('int_pwv', pwvOptions);
+  document.getElementById('grp_va').innerHTML = mk('int_va', vaOptions);
+}
+function buildParams(){
+  const tbody = document.getElementById('paramsBody');
+  tbody.innerHTML = paramDefs.map(p=>`
+    <tr>
+      <td class="pname"><b>${p.name}</b><span>${p.desc}</span></td>
+      <td><input type="number" step="0.001" id="val_${p.id}" oninput="recalc()"></td>
+      <td class="mono">${p.refText}</td>
+      <td><span class="flagpill flag-none" id="flag_${p.id}">Belum diisi</span></td>
+    </tr>`).join('');
+}
+function buildRekom(){
+  const wrap = document.getElementById('rekomList');
+  wrap.innerHTML = rekomDefault.map((r,i)=>`<label class="opt"><input type="checkbox" id="rek_${i}" checked>${r}</label>`).join('') +
+    `<div class="field" style="margin-top:8px;"><label>Rekomendasi Tambahan</label><input type="text" id="rek_custom" placeholder="Tulis rekomendasi lain..."></div>`;
+}
+
+/* ---------------- helpers ---------------- */
+function num(id){ const el=document.getElementById(id); if(!el) return null; const v = parseFloat(el.value); return isNaN(v)? null : v; }
+function txt(id){ const el=document.getElementById(id); return el? el.value : ''; }
+function setTxt(id, v){ const el=document.getElementById(id); if(el) el.innerText = v; }
+
+function calcAge(dobStr, refDateStr){
+  if(!dobStr) return null;
+  const dob = new Date(dobStr);
+  const ref = refDateStr ? new Date(refDateStr) : new Date();
+  let years = ref.getFullYear() - dob.getFullYear();
+  let months = ref.getMonth() - dob.getMonth();
+  if(ref.getDate() < dob.getDate()) months--;
+  if(months < 0){ years--; months += 12; }
+  return {years, months};
+}
+function bmiCategory(bmi){
+  if(bmi < 18.5) return "Kurus";
+  if(bmi < 25) return "Normal";
+  if(bmi < 30) return "Gemuk";
+  return "Obesitas";
+}
+
+/* ---------------- main recalculation (edit view) ---------------- */
+function recalc(){
+  const nama = txt('p_nama') || '—';
+  const jk = txt('p_jk');
+  const tglLahir = txt('p_tgllahir');
+  const tglPeriksa = txt('p_tglperiksa');
+  const tb = num('p_tb'), bb = num('p_bb');
+
+  const age = calcAge(tglLahir, tglPeriksa);
+  let ageStr = '—';
+  if(age) ageStr = `${age.years} Th ${age.months} Bln`;
+
+  let bmi = null, bmiStr = '—';
+  if(tb && bb){ bmi = bb / Math.pow(tb/100,2); bmiStr = `${bmi.toFixed(1)} [${bmiCategory(bmi)}]`; }
+
+  setTxt('p_computed', `${ageStr} · IMT ${bmiStr}`);
+  setTxt('hdrNama', nama);
+  setTxt('hdrUsia', `${ageStr!=='—'?ageStr:'—'} / ${jk}`);
+  setTxt('hdrTgl', tglPeriksa ? new Date(tglPeriksa).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : '—');
+  setTxt('hdrImt', bmiStr);
+
+  const limbData = {};
+  limbs.forEach(l=>{
+    const sys = num(`${l.key}_sys`), dia = num(`${l.key}_dia`);
+    const mapEl = document.getElementById(`${l.key}_map`);
+    const ppEl = document.getElementById(`${l.key}_pp`);
+    if(sys!=null && dia!=null){
+      if(mapEl.value === '') mapEl.placeholder = Math.round(dia + (sys-dia)/3);
+      if(ppEl.value === '') ppEl.placeholder = Math.round(sys-dia);
+    }
+    limbData[l.key] = {
+      sys, dia,
+      map: mapEl.value!=='' ? parseFloat(mapEl.value) : (sys!=null&&dia!=null? Math.round(dia+(sys-dia)/3): null),
+      pp: ppEl.value!=='' ? parseFloat(ppEl.value) : (sys!=null&&dia!=null? Math.round(sys-dia): null),
+    };
+  });
+  drawLineChart('bpChart', (c)=>bpChart=c, bpChart, limbs.map(l=>l.label),
+    [ {label:'SYS', data:limbs.map(l=>limbData[l.key].sys), color:'#C81E3A'},
+      {label:'DIA', data:limbs.map(l=>limbData[l.key].dia), color:'#1B4F72'} ], null);
+
+  drawRangeBar('abiRbar', num('p_abiR'), 0.6, 1.6);
+  drawRangeBar('abiLbar', num('p_abiL'), 0.6, 1.6);
+  drawAgeRuler('ageRuler', age ? age.years : null, num('p_va'), txt('p_valabel'));
+
+  suggestBP(limbData);
+  suggestABI(num('p_abiR'), num('p_abiL'));
+  suggestPWV(num('p_pwvR'), num('p_pwvL'));
+  suggestVA(age ? age.years : null, num('p_va'));
+
+  let normalCount = 0, filledCount = 0;
+  const idxLabels = [], idxValues = [];
+  paramDefs.forEach(p=>{
+    const v = num(`val_${p.id}`);
+    const flagEl = document.getElementById(`flag_${p.id}`);
+    if(v==null){ flagEl.className='flagpill flag-none'; flagEl.innerText='Belum diisi'; return; }
+    filledCount++;
+    const ok = paramOk(p, v);
+    if(ok) normalCount++;
+    flagEl.className = 'flagpill ' + (ok?'flag-ok':'flag-bad');
+    flagEl.innerText = ok ? 'Normal' : 'Di luar rujukan';
+    idxLabels.push(p.id.toUpperCase());
+    idxValues.push(Math.round(paramIndex(p, v)));
+  });
+  document.getElementById('paramsSummary').innerText = filledCount ? `${normalCount} dari ${filledCount} parameter terisi berada dalam rujukan.` : '';
+  drawLineChart('paramsChart', (c)=>paramsChart=c, paramsChart, idxLabels,
+    [{label:'Indeks (%)', data:idxValues, color:'#0E7C7B'}], 100);
+}
+
+/* generic line-chart drawer, reused for both dashboard and report */
+function drawLineChart(canvasId, setter, existing, labels, series, refLine){
+  const ctx = document.getElementById(canvasId);
+  if(!ctx) return existing;
+  const datasets = series.map(s=>({
+    label:s.label, data:s.data, borderColor:s.color, backgroundColor:s.color,
+    tension:.35, pointRadius:4, pointHoverRadius:5, borderWidth:2.4, fill:false, spanGaps:true
+  }));
+  if(refLine!=null){
+    datasets.push({ label:'Rujukan', data:labels.map(()=>refLine), borderColor:'#9aa9ad', borderDash:[5,4], pointRadius:0, borderWidth:1.4 });
+  }
+  if(existing){ existing.data.labels=labels; existing.data.datasets=datasets; existing.update(); return existing; }
+  const chart = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets },
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false} },
+      scales:{ y:{ beginAtZero:true, grid:{color:'#eef1f2'} }, x:{ grid:{display:false} } }
+    }
+  });
+  setter(chart);
+  return chart;
+}
+
+function drawRangeBar(elId, value, min, max){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  el.innerHTML = '';
+  if(value==null) return;
+  const pct = Math.min(100, Math.max(0, (value-min)/(max-min)*100));
+  const marker = document.createElement('div');
+  marker.className = 'marker';
+  marker.style.left = pct+'%';
+  marker.setAttribute('data-label', value.toFixed(2));
+  el.appendChild(marker);
+}
+
+function drawAgeRuler(elId, actualAge, vascAge, vascLabel){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  const min=20, max=70;
+  el.innerHTML = `<div class="track"></div><div class="scale">${[20,30,40,50,60,70].map(t=>`<span>${t}</span>`).join('')}</div>`;
+  const clampPct = (v)=> Math.min(96, Math.max(4,(v-min)/(max-min)*100));
+  if(actualAge){
+    const pct = clampPct(actualAge);
+    el.innerHTML += `<div class="pin actual" style="left:${pct}%"><div class="flag">Usia ${actualAge} th</div><div class="stem"></div></div>`;
+  }
+  if(vascAge){
+    const pct = clampPct(vascAge);
+    el.innerHTML += `<div class="pin vasc" style="left:${pct}%;top:36px;"><div class="stem" style="margin-bottom:2px;"></div><div class="flag">${vascLabel || ('Vaskular '+vascAge+' th')}</div></div>`;
+  }
+}
+
+/* ---------------- suggestion badges ---------------- */
+function pickRadio(name, value){
+  document.querySelectorAll(`input[name="${name}"]`).forEach(r=>{ if(!r.dataset.userTouched) r.checked = (r.value===value); });
+}
+document.addEventListener('change', e=>{
+  if(e.target.name && e.target.name.startsWith('int_')) e.target.dataset.userTouched='1';
+});
+function suggestBP(limbData){
+  const arms = [limbData.lka, limbData.lki].filter(a=>a.sys!=null && a.dia!=null);
+  if(arms.length===0){ setTxt('sug_bp',''); return; }
+  const sys = Math.max(...arms.map(a=>a.sys));
+  const dia = Math.max(...arms.map(a=>a.dia));
+  let cat;
+  if(sys>=160 || dia>=100) cat = "Hipertensi Derajat 2";
+  else if(sys>=140 || dia>=90) cat = "Hipertensi Derajat 1";
+  else if(sys>=130 || dia>=85) cat = "Normal - Tinggi";
+  else cat = "Normal";
+  setTxt('sug_bp', `Saran: ${cat} (lengan tertinggi ${sys}/${dia} mmHg)`);
+  pickRadio('int_bp', cat);
+}
+function suggestABI(r, l){
+  const vals = [r,l].filter(v=>v!=null);
+  if(vals.length===0){ setTxt('sug_abi',''); return; }
+  const worst = Math.min(...vals);
+  let cat;
+  if(worst < 0.90) cat = "Possible Occlusion";
+  else if(worst < 1.00) cat = "Borderline";
+  else if(worst <= 1.40) cat = "Normal";
+  else cat = "Non-compressible";
+  setTxt('sug_abi', `Saran: ${cat} (ABI terendah ${worst.toFixed(2)})`);
+  pickRadio('int_abi', cat);
+}
+function suggestPWV(r, l){
+  const vals = [r,l].filter(v=>v!=null);
+  if(vals.length===0){ setTxt('sug_pwv',''); return; }
+  const worst = Math.max(...vals);
+  const cat = worst > 14 ? "Normal dengan resiko (>14 m/s)" : "Normal tanpa resiko";
+  setTxt('sug_pwv', `Saran: ${cat} (abPWV tertinggi ${worst.toFixed(1)} m/s)`);
+  pickRadio('int_pwv', cat);
+}
+function suggestVA(actual, vasc){
+  if(actual==null || vasc==null){ setTxt('sug_va',''); return; }
+  let cat;
+  if(vasc < actual) cat = "Lebih Muda";
+  else if(vasc > actual) cat = "Lebih Tua";
+  else cat = "Sesuai";
+  setTxt('sug_va', `Saran: ${cat} (usia vaskular ${vasc} vs aktual ${actual})`);
+  pickRadio('int_va', cat);
+}
+
+/* ---------------- sample data ---------------- */
+function fillSample(){
+  document.getElementById('p_nama').value = 'dr. retri';
+  document.getElementById('p_jk').value = 'Laki-laki';
+  document.getElementById('p_tgllahir').value = '1969-12-05';
+  document.getElementById('p_tangan').value = 'Kanan';
+  document.getElementById('p_tglperiksa').value = '2026-08-21T15:27';
+  document.getElementById('p_tb').value = 165;
+  document.getElementById('p_bb').value = 67;
+
+  const riw = { 0:['pasien','ayah','ibu'], 1:['ayah'], 5:['pasien','ayah','ibu'], 8:['pasien','ayah','ibu'] };
+  riwayatItems.forEach((_,i)=>{ ['pasien','ayah','ibu'].forEach(who=>{ document.getElementById(`riw_${i}_${who}`).checked = !!(riw[i] && riw[i].includes(who)); }); });
+
+  const bp = { lka:[124,69,88,55], lki:[119,74,89,45], kka:[145,81,102,64], kki:[143,80,101,64] };
+  Object.keys(bp).forEach(k=>{
+    const [sys,dia,map,pp] = bp[k];
+    document.getElementById(`${k}_sys`).value = sys;
+    document.getElementById(`${k}_dia`).value = dia;
+    document.getElementById(`${k}_map`).value = map;
+    document.getElementById(`${k}_pp`).value = pp;
+  });
+
+  document.getElementById('p_abiR').value = 1.17;
+  document.getElementById('p_abiL').value = 1.15;
+  document.getElementById('p_pwvR').value = 10.6;
+  document.getElementById('p_pwvL').value = 10.7;
+  document.getElementById('p_va').value = 30;
+  document.getElementById('p_valabel').value = 'Early 30';
+
+  const pv = { p06:0.763, p07:0.239, p08:0.44, p09:0.67, p10:0.76, p11:855, p12:0.193, p13:1.55, p14:0.84, p15:72 };
+  Object.keys(pv).forEach(k=>{ document.getElementById(`val_${k}`).value = pv[k]; });
+
+  document.getElementById('f_machine').value = '010423NV0003 [Ver 3.1]';
+  document.getElementById('statusNote').innerText = 'Data contoh dimuat.';
+  recalc();
+}
+
+function resetForm(){
+  if(!confirm('Kosongkan semua data yang sudah diisi?')) return;
+  document.querySelectorAll('main input[type=text],main input[type=number],main input[type=date],main input[type=datetime-local],main textarea').forEach(el=>el.value='');
+  document.querySelectorAll('input[type=checkbox]').forEach(el=>el.checked=false);
+  document.querySelectorAll('input[type=radio]').forEach(el=>{ el.checked=false; delete el.dataset.userTouched; });
+  document.getElementById('f_machine').value = '010423NV0003 [Ver 3.1]';
+  document.getElementById('statusNote').innerText = 'Form dikosongkan.';
+  recalc();
+}
+
+/* ---------------- import / export ---------------- */
+function collectData(){
+  const data = { fields:{}, checks:{}, radios:{} };
+  document.querySelectorAll('main input[type=text],main input[type=number],main input[type=date],main input[type=datetime-local],main textarea,main select,footer input').forEach(el=>{ data.fields[el.id]=el.value; });
+  document.querySelectorAll('input[type=checkbox]').forEach(el=>{ data.checks[el.id]=el.checked; });
+  document.querySelectorAll('input[type=radio]:checked').forEach(el=>{ data.radios[el.name]=el.value; });
+  return data;
+}
+function exportJSON(){
+  const data = collectData();
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const nama = (document.getElementById('p_nama').value || 'pasien').replace(/\s+/g,'_');
+  a.download = `NIVA_${nama}.json`;
+  a.click();
+  document.getElementById('statusNote').innerText = 'JSON diunduh.';
+}
+function loadJSON(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      Object.keys(data.fields||{}).forEach(id=>{ const el=document.getElementById(id); if(el) el.value = data.fields[id]; });
+      Object.keys(data.checks||{}).forEach(id=>{ const el=document.getElementById(id); if(el) el.checked = data.checks[id]; });
+      Object.keys(data.radios||{}).forEach(name=>{
+        const el = document.querySelector(`input[name="${name}"][value="${CSS.escape(data.radios[name])}"]`);
+        if(el){ el.checked = true; el.dataset.userTouched='1'; }
+      });
+      document.getElementById('statusNote').innerText = 'Data dimuat dari file.';
+      recalc();
+    }catch(err){ alert('Gagal membaca file JSON: '+err.message); }
+  };
+  reader.readAsText(file);
+}
+
+/* =================================================================
+   REPORT (HASIL) VIEW — versi cetak profesional, 2 halaman A4
+   ================================================================= */
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function buildReportData(){
+  const nama = txt('p_nama') || '-';
+  const jk = txt('p_jk');
+  const tgllahir = txt('p_tgllahir');
+  const tglperiksa = txt('p_tglperiksa');
+  const tangan = txt('p_tangan');
+  const tb = num('p_tb'), bb = num('p_bb');
+  const age = calcAge(tgllahir, tglperiksa);
+  const ageStr = age ? `${age.years} Th ${age.months} Bln` : '-';
+  let bmi=null, bmiStr='-';
+  if(tb && bb){ bmi = bb/Math.pow(tb/100,2); bmiStr = `${bmi.toFixed(1)} kg/m² [${bmiCategory(bmi)}]`; }
+
+  const riw = [];
+  riwayatItems.forEach((item,i)=>{
+    const who = [];
+    if(document.getElementById(`riw_${i}_pasien`).checked) who.push('Pasien');
+    if(document.getElementById(`riw_${i}_ayah`).checked) who.push('Ayah');
+    if(document.getElementById(`riw_${i}_ibu`).checked) who.push('Ibu');
+    if(who.length) riw.push(`${item} (${who.join(', ')})`);
+  });
+
+  const limbData = {};
+  limbs.forEach(l=>{
+    limbData[l.key] = {
+      sys:num(`${l.key}_sys`), dia:num(`${l.key}_dia`),
+      map:num(`${l.key}_map`), pp:num(`${l.key}_pp`)
+    };
+  });
+
+  const abiR = num('p_abiR'), abiL = num('p_abiL');
+  const pwvR = num('p_pwvR'), pwvL = num('p_pwvL');
+  const va = num('p_va'), valabel = txt('p_valabel');
+
+  const intBP = document.querySelector('input[name=int_bp]:checked');
+  const intABI = document.querySelector('input[name=int_abi]:checked');
+  const intPWV = document.querySelector('input[name=int_pwv]:checked');
+  const intVA = document.querySelector('input[name=int_va]:checked');
+
+  const paramRows = paramDefs.map(p=>{
+    const v = num(`val_${p.id}`);
+    return { ...p, v, ok: v==null? null : paramOk(p,v), idx: v==null? null : Math.round(paramIndex(p,v)) };
+  });
+
+  const rekom = [];
+  rekomDefault.forEach((r,i)=>{ if(document.getElementById(`rek_${i}`).checked) rekom.push(r); });
+  const custom = txt('rek_custom').trim();
+  if(custom) rekom.push(custom);
+  const catatan = txt('p_catatan').trim();
+
+  const machine = txt('f_machine');
+
+  return { nama, jk, tgllahir, tglperiksa, tangan, tb, bb, ageStr, bmiStr, riw, limbData, abiR, abiL, pwvR, pwvL, va, valabel, intBP, intABI, intPWV, intVA, paramRows, rekom, catatan, machine };
+}
+
+function fmtDate(s, withTime){
+  if(!s) return '-';
+  const d = new Date(s);
+  return d.toLocaleString('id-ID', withTime ? {dateStyle:'long', timeStyle:'short'} : {dateStyle:'long'});
+}
+
+const brandMarkSVG = `<svg viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2-7 4 14 3-10 2 5h5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+function rHeadHTML(d, pageLabel){
+  return `
+  <div class="rhead">
+    <div class="brand">
+      <div class="mark">${brandMarkSVG}</div>
+      <div>
+        <div class="t1">NIVA — Hasil Pemeriksaan Vaskular</div>
+        <div class="t2">Non Invasive Vascular Analyzer · PT Selaras Citra Nusantara Perkasa (SCNP)</div>
+      </div>
+    </div>
+    <div class="meta">
+      <div><b>${esc(d.nama)}</b> · ${esc(d.jk)} · ${esc(d.ageStr)}</div>
+      <div>Diperiksa: ${fmtDate(d.tglperiksa, true)}</div>
+      <div>${pageLabel}</div>
+    </div>
+  </div>`;
+}
+
+function rFootHTML(d){
+  const now = new Date().toLocaleString('id-ID',{dateStyle:'medium', timeStyle:'short'});
+  return `
+  <div class="rfoot">
+    <div>Machine ID: ${esc(d.machine)} · Izin Edar AKD NIVA: KEMENKES RI AKD 20501320625 · Kategori: Peralatan Kardiologi</div>
+    <div>Dokumen dibuat otomatis via NIVA Report Builder pada ${now} — bukan pengganti penilaian medis profesional.</div>
+  </div>`;
+}
+
+function buildPage1(d){
+  const limbRows = limbs.map(l=>{
+    const v = d.limbData[l.key];
+    return `<tr><td>${l.label}</td><td class="num">${v.sys ?? '-'}</td><td class="num">${v.dia ?? '-'}</td><td class="num">${v.map ?? '-'}</td><td class="num">${v.pp ?? '-'}</td></tr>`;
+  }).join('');
+
+  const riwHTML = d.riw.length
+    ? `<div class="rchips">${d.riw.map(r=>`<span class="rchip">${esc(r)}</span>`).join('')}</div>`
+    : `<div class="status-note">Tidak ada riwayat penyakit signifikan yang tercatat.</div>`;
+
+  const interpCats = [
+    {k:'P01 · Blood Pressure', v: d.intBP ? d.intBP.value : '-'},
+    {k:'P03 · ABI', v: d.intABI ? d.intABI.value : '-'},
+    {k:'P04 · PWV', v: d.intPWV ? d.intPWV.value : '-'},
+    {k:'P05 · Vascular Age', v: d.intVA ? d.intVA.value : '-'},
+  ];
+  const interpHTML = interpCats.map(c=>`<div class="rcat"><div class="rk">${c.k}</div><div class="rv">${esc(c.v)}</div></div>`).join('');
+
+  return `
+    ${rHeadHTML(d,'Halaman 1 dari 2')}
+
+    <div class="rsection">
+      <div class="rsection-title">Data Pasien</div>
+      <div class="rgrid rgrid-4">
+        <div class="rbox"><div class="rk">Nama</div><div class="rv">${esc(d.nama)}</div></div>
+        <div class="rbox"><div class="rk">Jenis Kelamin</div><div class="rv">${esc(d.jk)}</div></div>
+        <div class="rbox"><div class="rk">Tanggal Lahir</div><div class="rv">${fmtDate(d.tgllahir,false)}</div></div>
+        <div class="rbox"><div class="rk">Usia</div><div class="rv">${esc(d.ageStr)}</div></div>
+        <div class="rbox"><div class="rk">Tangan Dominan</div><div class="rv">${esc(d.tangan)}</div></div>
+        <div class="rbox"><div class="rk">Tinggi / Berat</div><div class="rv">${d.tb??'-'} cm / ${d.bb??'-'} kg</div></div>
+        <div class="rbox"><div class="rk">IMT</div><div class="rv">${esc(d.bmiStr)}</div></div>
+        <div class="rbox"><div class="rk">Tanggal Periksa</div><div class="rv">${fmtDate(d.tglperiksa,true)}</div></div>
+      </div>
+    </div>
+
+    <div class="rsection">
+      <div class="rsection-title">Riwayat Pasien &amp; Keluarga</div>
+      ${riwHTML}
+    </div>
+
+    <div class="rsection">
+      <div class="rsection-title">Tekanan Darah — Lengan &amp; Kaki (P01–P02)</div>
+      <div class="rgrid rgrid-2">
+        <table class="rtable">
+          <thead><tr><th>Titik Ukur</th><th>SYS</th><th>DIA</th><th>MAP</th><th>PP</th></tr></thead>
+          <tbody>${limbRows}</tbody>
+        </table>
+        <div class="rchart-wrap"><canvas id="rptBpChart" height="130"></canvas></div>
+      </div>
+    </div>
+
+    <div class="rsection">
+      <div class="rsection-title">ABI, abPWV &amp; Usia Vaskular (P03–P05)</div>
+      <div class="rgrid rgrid-4">
+        <div class="rbox"><div class="rk">ABI Kanan</div><div class="rv">${d.abiR ?? '-'}</div></div>
+        <div class="rbox"><div class="rk">ABI Kiri</div><div class="rv">${d.abiL ?? '-'}</div></div>
+        <div class="rbox"><div class="rk">abPWV Kanan</div><div class="rv">${d.pwvR ?? '-'} m/s</div></div>
+        <div class="rbox"><div class="rk">abPWV Kiri</div><div class="rv">${d.pwvL ?? '-'} m/s</div></div>
+      </div>
+      <div class="rgrid rgrid-2" style="margin-top:8px;">
+        <div class="rbox"><div class="rk">Estimasi Usia Pembuluh Darah</div><div class="rv">${d.va ?? '-'} tahun ${d.valabel? '· '+esc(d.valabel):''}</div></div>
+        <div class="rbox"><div class="rk">Usia Aktual</div><div class="rv">${esc(d.ageStr)}</div></div>
+      </div>
+    </div>
+
+    <div class="rsection">
+      <div class="rsection-title">Ringkasan Interpretasi</div>
+      <div class="rcat-grid">${interpHTML}</div>
+    </div>
+
+    ${rFootHTML(d)}
+  `;
+}
+
+function buildPage2(d){
+  const rows = d.paramRows.map(p=>{
+    const pill = p.v==null ? `<span class="rpill neu">Belum diisi</span>` : (p.ok ? `<span class="rpill ok">Normal</span>` : `<span class="rpill bad">Di luar rujukan</span>`);
+    return `<tr class="${p.ok===false?'hl':''}"><td>${esc(p.name)}<br><span style="color:var(--slate);">${esc(p.desc)}</span></td><td class="num">${p.v ?? '-'}</td><td class="num">${esc(p.refText)}</td><td class="num">${pill}</td></tr>`;
+  }).join('');
+
+  const filled = d.paramRows.filter(p=>p.v!=null);
+  const normal = filled.filter(p=>p.ok).length;
+  const summaryLine = filled.length ? `${normal} dari ${filled.length} parameter berada dalam rentang rujukan.` : 'Belum ada parameter P06–P15 yang diisi.';
+
+  const rekomHTML = d.rekom.length
+    ? `<ul class="rrecom">${d.rekom.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`
+    : `<div class="status-note">Tidak ada rekomendasi khusus.</div>`;
+
+  return `
+    ${rHeadHTML(d,'Halaman 2 dari 2')}
+
+    <div class="rsection">
+      <div class="rsection-title">Parameter Jantung &amp; Pembuluh Darah (P06–P15)</div>
+      <table class="rtable">
+        <thead><tr><th style="width:44%;">Parameter</th><th>Hasil</th><th>Nilai Rujukan</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+
+    <div class="rsection">
+      <div class="rsection-title">Indeks Parameter terhadap Nilai Rujukan</div>
+      <div class="rchart-wrap"><canvas id="rptParamsChart" height="105"></canvas></div>
+      <div class="status-note" style="margin-top:6px;">${summaryLine} Garis putus-putus menandai batas rujukan (100%).</div>
+    </div>
+
+    <div class="rsection">
+      <div class="rsection-title">Rekomendasi</div>
+      ${rekomHTML}
+    </div>
+
+    <div class="rsection">
+      <div class="rsection-title">Catatan Dokter</div>
+      <div class="rnote-box">${d.catatan ? esc(d.catatan) : '-'}</div>
+    </div>
+
+    <div class="rsign">
+      <div class="box"><div class="line"></div>Dokter Pemeriksa</div>
+    </div>
+
+    ${rFootHTML(d)}
+  `;
+}
+
+function showReport(){
+  const d = buildReportData();
+  document.getElementById('rpage1').innerHTML = buildPage1(d);
+  document.getElementById('rpage2').innerHTML = buildPage2(d);
+  document.body.classList.add('report-mode');
+  window.scrollTo(0,0);
+
+  requestAnimationFrame(()=>{
+    rptBpChart = drawLineChart('rptBpChart', (c)=>rptBpChart=c, null, limbs.map(l=>l.label),
+      [ {label:'SYS', data:limbs.map(l=>d.limbData[l.key].sys), color:'#C81E3A'},
+        {label:'DIA', data:limbs.map(l=>d.limbData[l.key].dia), color:'#1B4F72'} ], null);
+
+    const filled = d.paramRows.filter(p=>p.v!=null);
+    rptParamsChart = drawLineChart('rptParamsChart', (c)=>rptParamsChart=c, null,
+      filled.map(p=>p.id.toUpperCase()), [{label:'Indeks (%)', data: filled.map(p=>p.idx), color:'#0E7C7B'}], 100);
+  });
+}
+
+function hideReport(){
+  document.body.classList.remove('report-mode');
+  if(rptBpChart){ rptBpChart.destroy(); rptBpChart=null; }
+  if(rptParamsChart){ rptParamsChart.destroy(); rptParamsChart=null; }
+}
+
+window.addEventListener('afterprint', ()=>{ /* keep report visible after print/cancel */ });
+
+/* ---------------- init ---------------- */
+buildRiwayat();
+buildLimbs();
+buildInterp();
+buildParams();
+buildRekom();
+recalc();
+</script>
+</body>
+</html>
